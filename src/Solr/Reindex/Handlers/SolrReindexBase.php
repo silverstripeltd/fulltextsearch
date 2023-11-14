@@ -55,8 +55,9 @@ abstract class SolrReindexBase implements SolrReindexHandler
         // Build queue for each class
         foreach ($indexClasses as $class => $options) {
             $includeSubclasses = $options['include_children'];
-
+            $logger->error(sprintf("processing index %s", json_encode($includeSubclasses)));
             foreach (SearchVariant::reindex_states($class, $includeSubclasses) as $state) {
+                $logger->error("processing variants before excluding state %s", json_encode($state));
                 if (!$searchableService->variantStateExcluded($state)) {
                     $this->processVariant($logger, $indexInstance, $state, $class, $includeSubclasses, $batchSize, $taskName);
                 }

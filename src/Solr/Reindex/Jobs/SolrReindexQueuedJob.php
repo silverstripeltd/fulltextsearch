@@ -80,6 +80,8 @@ class SolrReindexQueuedJob extends SolrReindexQueuedJobBase
 
         // Send back to processor
         $logger->info("Beginning init of reindex");
+        $logger->info(sprintf("task to reindex %s", $this->taskName));
+
         $this
             ->getHandler()
             ->runReindex($logger, $this->batchSize, $this->taskName, $this->classes);
