@@ -2,6 +2,9 @@
 
 namespace SilverStripe\FullTextSearch\Solr\Services;
 
+use Psr\Log\LoggerInterface;
+use SilverStripe\Core\Injector\Injector;
+
 class Solr4Service_Core extends SolrService_Core
 {
     /**
@@ -18,6 +21,10 @@ class Solr4Service_Core extends SolrService_Core
         $searcherValue = $waitSearcher ? 'true' : 'false';
 
         $rawPost = '<commit expungeDeletes="' . $expungeValue . '" waitSearcher="' . $searcherValue . '" />';
+
+        $logger = Injector::inst()->get(LoggerInterface::class);
+        $logger->error('Solr: commit - ' . $rawPost);
+
         return $this->_sendRawPost($this->_updateUrl, $rawPost, $timeout);
     }
 
@@ -57,6 +64,9 @@ class Solr4Service_Core extends SolrService_Core
             }
         }
         $rawPost .= '</add>';
+
+        $logger = Injector::inst()->get(LoggerInterface::class);
+        $logger->error('Solr: addDocuments - ' . $rawPost);
 
         return $this->add($rawPost);
     }

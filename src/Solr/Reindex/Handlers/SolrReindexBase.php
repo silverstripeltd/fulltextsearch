@@ -192,6 +192,9 @@ abstract class SolrReindexBase implements SolrReindexHandler
 
         // Process selected records in this class
         $items = $this->getRecordsInGroup($indexInstance, $class, $groups, $group);
+        $logger->error('Solr: SQL Query - ' . $items->sql());
+        $logger->error('Solr: SQL Count - ' . $items->count());
+
         $processed = array();
         foreach ($items as $item) {
             $processed[] = $item->ID;

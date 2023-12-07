@@ -392,6 +392,10 @@ abstract class SearchIndex extends ViewableData
     /** Returns true if some variant state should be ignored */
     public function variantStateExcluded($state)
     {
+        $logger = Injector::inst()->get(LoggerInterface::class);
+        $logger->error('Solr: variantStateExcluded{$state} - ' . var_export($state, 1));
+        $logger->error('Solr: variantStateExcluded{excludedVariantStates} - ' . var_export($this->excludedVariantStates, 1));
+
         foreach ($this->excludedVariantStates as $excludedstate) {
             $matches = true;
 

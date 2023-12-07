@@ -2,6 +2,8 @@
 
 namespace SilverStripe\FullTextSearch\Search\Processors;
 
+use Psr\Log\LoggerInterface;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\FullTextSearch\Search\Services\SearchableService;
 use SilverStripe\FullTextSearch\Search\Variants\SearchVariantVersioned;
 use SilverStripe\ORM\DataObject;
@@ -45,11 +47,15 @@ abstract class SearchUpdateProcessor
     {
         $base = DataObject::getSchema()->baseDataClass($class);
         $forclass = isset($this->dirty[$base]) ? $this->dirty[$base] : array();
+        $logger = Injector::inst()->get(LoggerInterface::class);
 
         foreach ($statefulids as $statefulid) {
             $id = $statefulid['id'];
             $state = $statefulid['state'];
             $statekey = serialize($state);
+
+            $logger->error('Solr: addDirtyIDs id - ' . $id);
+            $logger->error('Solr: addDirtyIDs state - ' . var_export($state, true));
 
             if (!isset($forclass[$statekey])) {
                 $forclass[$statekey] = array('state' => $state, 'ids' => array($id => array($index)));
@@ -76,6 +82,7 @@ abstract class SearchUpdateProcessor
         $dirty = $this->getSource();
         $indexes = FullTextSearch::get_indexes();
         $searchableService = SearchableService::singleton();
+        $logger = Injector::inst()->get(LoggerInterface::class);
 
         foreach ($dirty as $base => $statefulids) {
             if (!$statefulids) {
@@ -91,16 +98,24 @@ abstract class SearchUpdateProcessor
                 // Ensure that indexes for all new / updated objects are included
                 $objs = DataObject::get($base)->byIDs(array_keys($ids ?? []));
 
+                $logger->error('Solr: prepareIndexes state - ' . var_export($state, 1));
                 /** @var DataObject $obj */
                 foreach ($objs as $obj) {
                     foreach ($ids[$obj->ID] as $index) {
                         if (!$searchableService->variantStateExcluded($state) &&
                             !$indexes[$index]->variantStateExcluded($state)
                         ) {
+                            $logger->error('Solr: prepareIndexes  - $state - ' . var_export($state, 1));
+                            $logger->error('Solr: prepareIndexes  - variantStateExcluded() - ' . $searchableService->variantStateExcluded($state));
+                            $logger->error('Solr: prepareIndexes  - variantStateExcluded[] - ' . (bool) $indexes[$index]->variantStateExcluded($state));
+
                             // Remove any existing data from index if the object is no longer indexable
                             if (!$searchableService->isIndexable($obj)) {
+                                $logger->error('Solr: Not indexable to delete - ' . $obj->ID);
+                                $logger->error('Solr: Not indexable canView - ' . (string) $obj->canView());
                                 $indexes[$index]->delete($base, $obj->ID, $state);
                             } else {
+                                $logger->error('Solr: Yes indexable to add - ' . $obj->ID);
                                 $indexes[$index]->add($obj);
                             }
                             $dirtyIndexes[$index] = $indexes[$index];
@@ -115,6 +130,7 @@ abstract class SearchUpdateProcessor
                         if (!$searchableService->variantStateExcluded($state) &&
                             !$indexes[$index]->variantStateExcluded($state)
                         ) {
+                            $logger->error('Solr: ID does not exist - ' . $id);
                             $indexes[$index]->delete($base, $id, $state);
                             $dirtyIndexes[$index] = $indexes[$index];
                         }

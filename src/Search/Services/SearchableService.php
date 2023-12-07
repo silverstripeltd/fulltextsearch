@@ -2,9 +2,11 @@
 
 namespace SilverStripe\FullTextSearch\Search\Services;
 
+use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\FullTextSearch\Search\Variants\SearchVariantVersioned;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Security\Member;
@@ -66,7 +68,10 @@ class SearchableService
      */
     public function variantStateExcluded(array $state): bool
     {
+        $logger = Injector::inst()->get(LoggerInterface::class);
         if (self::config()->get('variant_state_draft_excluded') && $this->isDraftVariantState($state)) {
+            $logger->error('Solr: variant_state_draft_excluded' . self::config()->get('variant_state_draft_excluded'));
+            $logger->error('Solr: isDraftVariantState' . $this->isDraftVariantState($state));
             return true;
         }
         return false;
@@ -126,13 +131,17 @@ class SearchableService
      */
     private function isSearchable(DataObject $obj, bool $indexing): bool
     {
+        $logger = Injector::inst()->get(LoggerInterface::class);
+
         // check if is a valid DataObject that has been persisted to the database
         if (is_null($obj) || !$obj->ID) {
+            $logger->error('Solr: isSearchable - Unknown Object');
             return false;
         }
 
         $key = $this->getCacheKey($obj, $indexing);
         if (isset($this->cache[$key])) {
+            $logger->error('Solr: isSearchable - getCacheKey' . (string) $this->cache[$key]);
             return $this->cache[$key];
         }
 
@@ -141,6 +150,8 @@ class SearchableService
         // ShowInSearch check
         // This will also call $obj->getShowInSearch() if it exists
         if (isset($obj->ShowInSearch) && !$obj->ShowInSearch) {
+            $logger->error('Solr: isSearchable - ShowInSearch{ID} - ' .  $obj->ID);
+            $logger->error('Solr: isSearchable - ShowInSearch - ' . $obj->ShowInSearch);
             $value = false;
         }
 
@@ -148,19 +159,26 @@ class SearchableService
         if ($value) {
             $objClass = $obj->getClassName();
             if ($indexing) {
+                $logger->error('Solr: isSearchable - Yes $indexing ');
                 // Anonymous member canView() for indexing
                 if (!$this->classSkipsCanViewCheck($objClass)) {
                     $value = Member::actAs(null, function () use ($obj) {
                         return (bool) $obj->canView();
                     });
+                    $logger->error('Solr: isSearchable - canView(actAs) - ' . (string) $value);
                 }
             } else {
                 // Current member canView() check for retrieving search results
                 $value = (bool) $obj->canView();
+                $logger->error('Solr: isSearchable - not $indexing ');
+                $logger->error('Solr: isSearchable - canView() - ' . (string) $value);
             }
+        } else {
+            $logger->error('Solr: isSearchable - no $value{ID} - ' .  $obj->ID);
         }
         $this->extend('updateIsSearchable', $obj, $indexing, $value);
         $this->cache[$key] = $value;
+        $logger->error('Solr: isSearchable - return - ' . (string) $value);
         return $value;
     }
 
